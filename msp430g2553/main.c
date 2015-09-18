@@ -70,7 +70,7 @@ int config(void) {
 	UCA0MCTL = UCBRS0;      // Modulation UCBRSx = 1
 	UCA0CTL1 &= ~UCSWRST;   // **Initialize USCI state machine**
 //
-//	IE2 |= UCA0RXIE; //interrupt from UART
+	IE2 |= UCA0RXIE; //interrupt from UART
 	/* UART */
 
 	/* DEFAULT VALUES */
@@ -90,14 +90,14 @@ int main(void) {
 	return 0;
 }
 
-//#pragma vector=USCIAB0RX_VECTOR
-//__interrupt void USCI0RX_ISR(void){
-//
-//	if (UCA0RXBUF == 0x02)
-//		P1OUT |= (LED1 + LED2);
-//	else
-//		P1OUT &= ~(LED1 + LED2);
-//}
+#pragma vector=USCIAB0RX_VECTOR
+__interrupt void USCI0RX_ISR(void){
+
+	if (UCA0RXBUF == 0x02)
+		P1OUT |= (LED1 + LED2);
+	else
+		P1OUT &= ~(LED1 + LED2);
+}
 
 #pragma vector=PORT1_VECTOR
 __interrupt void Port_1(void) {
