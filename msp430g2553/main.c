@@ -16,6 +16,7 @@
 #define LED1	BIT0
 #define LED2	BIT6
 #define BTN2	BIT3
+//#define INCH_x	1010
 
 //unsigned char ExampleFunction(unsigned int ticks);
 
@@ -73,6 +74,12 @@ int config(void) {
 	IE2 |= UCA0RXIE; //interrupt from UART
 	/* UART */
 
+	/* ADC */
+	ADC10CTL0 = SREF_1 + REFON + ADC10SHT_3 + ADC10ON; // 1.5V ref, Ref ON, 64 clocks for sample
+	ADC10CTL1 = INCH_10 + ADC10DIV_3;	// Temp Sensor is at channel X and CLK/4
+	__delay_cycles(5000);	// settle time 30ms
+	/* ADC */
+
 	/* DEFAULT VALUES */
 	P1OUT &= ~(LED1 + LED2); //sets LED1 and LED2 to 0, so - when launched, it won't start with lights-on
 
@@ -82,16 +89,31 @@ int config(void) {
 
 int main(void) {
 	config(); // executes function called config, that itself executes all the necesary configuration commands, so that i will not see bullshit on main function
-	/* LOGIC */
-	for (;;) { //infinite loop, we can just delete this now, its not necesary, beacuse system will work anyways, since its based on interrupts.
-	}
 
+	/* LOGIC */
+	long temp, mcuTemp;
+	for (;;) { //infinite loop, we can just delete this now, its not necesary, beacuse system will work anyways, since its based on interrupts.
+		__delay_cycles(1000); // Wait for reference to settle
+		ADC10CTL0 |= ENC + ADC10SC;	// Sampling and conversion start
+		while (ADC10CTL1 & BUSY)
+			; // Wait..i am converting...
+		temp = ADC10MEM;	// Read ADC memory
+		mcuTemp = ((temp - 673) * 423) / 1024;	// Convert voltage to Celsius
+		//mcuTemp = ~mcuTemp;
+		//mcuTemp = (ADC(temp) - CAL_ADC_25T30) * (65/(CAL_ADC_25T85 - CAL_ADC_25T30)) +30;
+
+		while (!(IFG2 & UCA0TXIFG))
+			;     // Wait until TX buffer is ready
+		UCA0TXBUF = mcuTemp; // Send hex value to UART, my-Tsotne ID 145852, it leaves this line when buffer is emptied = data is sent
+
+		__delay_cycles(20000);
+	}
 	/* LOGIC */
 	return 0;
 }
 
 #pragma vector=USCIAB0RX_VECTOR
-__interrupt void USCI0RX_ISR(void){
+__interrupt void USCI0RX_ISR(void) {
 
 	if (UCA0RXBUF == 0x02)
 		P1OUT |= (LED1 + LED2);
@@ -102,8 +124,9 @@ __interrupt void USCI0RX_ISR(void){
 #pragma vector=PORT1_VECTOR
 __interrupt void Port_1(void) {
 
-	while (!(IFG2 & UCA0TXIFG));     // Wait until TX buffer is ready
-	UCA0TXBUF = 0x02;             // Send hex value to UART, my-Tsotne ID 145852, it leaves this line when buffer is emptied = data is sent
+	while (!(IFG2 & UCA0TXIFG))
+		;     // Wait until TX buffer is ready
+	UCA0TXBUF = 0x02; // Send hex value to UART, my-Tsotne ID 145852, it leaves this line when buffer is emptied = data is sent
 
 	P1OUT ^= (LED1 + LED2); //when button is pressed, you toggle LED1 and LED2 leds
 	P1IFG &= ~BTN2; // P1.3 IFG cleared
