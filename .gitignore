@@ -1,3 +1,9 @@
+# tsotne: ignoring bullshit
+msp430g2553/.launches/
+msp430g2553/Debug/
+msp430g2553/targetConfigs/
+
+
 # Windows image file caches
 Thumbs.db
 ehthumbs.db
